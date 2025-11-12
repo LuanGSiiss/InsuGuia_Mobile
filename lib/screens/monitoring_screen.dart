@@ -25,16 +25,7 @@ class _MonitoringScreenState extends State<MonitoringScreen> {
   bool _isSaving = false;
 
   DateTime _selectedDate = DateTime.now();
-  String _selectedTime = 'Jejum';
-
-  final List<String> _timeOptions = [
-    'Jejum',
-    'Pré-almoço',
-    'Pós-almoço',
-    'Pré-jantar',
-    'Pós-jantar',
-    'Antes de dormir',
-  ];
+  TimeOfDay _selectedTime = TimeOfDay.now();
 
   @override
   void initState() {
@@ -80,10 +71,12 @@ class _MonitoringScreenState extends State<MonitoringScreen> {
       final glucoseValue = double.parse(_glucoseController.text);
       final recommendation = PrescriptionService.getAdjustmentRecommendation(glucoseValue);
 
+      final timeString = '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}';
+
       final reading = GlycemicReading(
         patientId: widget.patient.id!,
         readingDate: _selectedDate,
-        readingTime: _selectedTime,
+        readingTime: timeString,
         glucoseValue: glucoseValue,
         adjustmentRecommendation: recommendation,
       );
@@ -143,22 +136,20 @@ class _MonitoringScreenState extends State<MonitoringScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  value: _selectedTime,
-                  decoration: const InputDecoration(
-                    labelText: 'Horário',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: _timeOptions
-                      .map((time) => DropdownMenuItem(
-                            value: time,
-                            child: Text(time),
-                          ))
-                      .toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedTime = value!;
-                    });
+                ListTile(
+                  title: const Text('Horário'),
+                  subtitle: Text('${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}'),
+                  trailing: const Icon(Icons.access_time),
+                  onTap: () async {
+                    final time = await showTimePicker(
+                      context: context,
+                      initialTime: _selectedTime,
+                    );
+                    if (time != null) {
+                      setState(() {
+                        _selectedTime = time;
+                      });
+                    }
                   },
                 ),
                 const SizedBox(height: 16),
@@ -346,19 +337,24 @@ class _MonitoringScreenState extends State<MonitoringScreen> {
 
   Widget _buildReadingCard(GlycemicReading reading) {
     Color statusColor;
+    IconData statusIcon;
     if (reading.glucoseValue < 70) {
       statusColor = Colors.red;
+      statusIcon = Icons.arrow_downward;
     } else if (reading.glucoseValue <= 140) {
       statusColor = Colors.green;
+      statusIcon = Icons.check_circle;
     } else if (reading.glucoseValue <= 180) {
       statusColor = Colors.orange;
+      statusIcon = Icons.warning;
     } else {
       statusColor = Colors.red;
+      statusIcon = Icons.arrow_upward;
     }
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
+      child: ExpansionTile(
         leading: CircleAvatar(
           backgroundColor: statusColor,
           child: Text(
@@ -375,10 +371,54 @@ class _MonitoringScreenState extends State<MonitoringScreen> {
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: Text(
-          reading.adjustmentRecommendation ?? 'Sem recomendação',
-          style: const TextStyle(fontSize: 12),
+          '${reading.glucoseValue.toStringAsFixed(0)} mg/dL',
+          style: TextStyle(
+            fontSize: 14,
+            color: statusColor,
+            fontWeight: FontWeight.w500,
+          ),
         ),
-        trailing: Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey[400]),
+        trailing: Icon(statusIcon, color: statusColor),
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.info_outline, size: 20, color: Colors.blue[700]),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Recomendação:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: statusColor.withOpacity(0.3)),
+                  ),
+                  child: Text(
+                    reading.adjustmentRecommendation ?? 'Sem recomendação disponível',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[800],
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
