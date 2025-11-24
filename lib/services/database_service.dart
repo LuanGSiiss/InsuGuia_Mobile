@@ -3,6 +3,7 @@ import '../models/patient.dart';
 import '../models/prescription.dart';
 import '../models/glycemic_reading.dart';
 import '../models/discharge_instruction.dart';
+import 'auth_service.dart';
 
 class DatabaseService {
   final SupabaseClient _client = Supabase.instance.client;
@@ -10,15 +11,24 @@ class DatabaseService {
   /// Busca todos os pacientes (ou apenas ativos se [onlyActive] for true)
   Future<List<Patient>> getPatients({bool onlyActive = false}) async {
     try {
+      final authService = AuthService();
+      final doctorId = authService.getCurrentDoctorId();
+
+      if (doctorId == null) {
+        return [];
+      }
+
       var query = _client
           .from('patients')
           .select()
+          .eq('doctor_id', doctorId)
           .order('created_at', ascending: false);
 
       if (onlyActive) {
         query = _client
             .from('patients')
             .select()
+            .eq('doctor_id', doctorId)
             .eq('is_discharged', false)
             .order('created_at', ascending: false);
       }
@@ -70,9 +80,19 @@ class DatabaseService {
   /// Cria um novo paciente
   Future<Patient> createPatient(Patient patient) async {
     try {
+      final authService = AuthService();
+      final doctorId = authService.getCurrentDoctorId();
+
+      if (doctorId == null) {
+        throw Exception('Médico não autenticado');
+      }
+
+      final patientData = patient.toJson();
+      patientData['doctor_id'] = doctorId;
+
       final response = await _client
           .from('patients')
-          .insert(patient.toJson())
+          .insert(patientData)
           .select()
           .maybeSingle();
 

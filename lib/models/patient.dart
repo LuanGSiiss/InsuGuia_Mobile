@@ -9,6 +9,7 @@ class Patient {
   final String admissionLocation;
   final String patientType;
   final bool isDischarged;
+  final String? doctorId;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -23,6 +24,7 @@ class Patient {
     required this.admissionLocation,
     this.patientType = 'não crítico',
     this.isDischarged = false,
+    this.doctorId,
     this.createdAt,
     this.updatedAt,
   });
@@ -39,6 +41,7 @@ class Patient {
       'admission_location': admissionLocation,
       'patient_type': patientType,
       'is_discharged': isDischarged,
+      if (doctorId != null) 'doctor_id': doctorId,
       if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
       if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
     };
@@ -56,6 +59,7 @@ class Patient {
       admissionLocation: json['admission_location'],
       patientType: json['patient_type'] ?? 'não crítico',
       isDischarged: json['is_discharged'] ?? false,
+      doctorId: json['doctor_id'],
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : null,
@@ -76,6 +80,7 @@ class Patient {
     String? admissionLocation,
     String? patientType,
     bool? isDischarged,
+    String? doctorId,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -90,6 +95,7 @@ class Patient {
       admissionLocation: admissionLocation ?? this.admissionLocation,
       patientType: patientType ?? this.patientType,
       isDischarged: isDischarged ?? this.isDischarged,
+      doctorId: doctorId ?? this.doctorId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
