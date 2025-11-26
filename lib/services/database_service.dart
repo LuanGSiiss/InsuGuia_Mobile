@@ -7,15 +7,36 @@ import '../models/discharge_instruction.dart';
 class DatabaseService {
   final SupabaseClient _client = Supabase.instance.client;
 
+ /// Busca todos os pacientes (ou apenas ativos se [onlyActive] for true)
   Future<List<Patient>> getPatients({bool onlyActive = false}) async {
-    var query = _client.from('patients').select().order('created_at', ascending: false);
+    try {
+      var query = _client
+          .from('patients')
+          .select()
+          .order('created_at', ascending: false);
 
-    if (onlyActive) {
-      query = query.eq('is_discharged', false);
+      if (onlyActive) {
+        query = _client
+            .from('patients')
+            .select()
+            .eq('is_discharged', false)
+            .order('created_at', ascending: false);
+      }
+
+      final response = await query;
+
+    
+
+      final patients =
+          response.map((json) => Patient.fromJson(json)).toList();
+
+      print('✅ ${patients.length} pacientes carregados com sucesso.');
+      return patients;
+    } catch (e, stack) {
+      print('❌ Erro ao carregar pacientes: $e');
+      print(stack);
+      rethrow;
     }
-
-    final response = await query;
-    return (response as List).map((json) => Patient.fromJson(json)).toList();
   }
 
   Future<Patient> getPatient(String id) async {
