@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/patient.dart';
 import '../services/database_service.dart';
-import '../services/auth_service.dart';
 import 'patient_form_screen.dart';
 import 'patient_detail_screen.dart';
-import 'login_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,95 +13,10 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final _databaseService = DatabaseService();
-  final _authService = AuthService();
 
   List<Patient> _patients = [];
   bool _isLoading = true;
   bool _showOnlyActive = true;
-
-  void _showFilterDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Filtrar Pacientes'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            RadioListTile<bool>(
-              title: const Text('Pacientes Ativos'),
-              value: true,
-              groupValue: _showOnlyActive,
-              onChanged: (value) {
-                Navigator.pop(context);
-                if (value != null) {
-                  setState(() {
-                    _showOnlyActive = value;
-                  });
-                  _loadPatients();
-                }
-              },
-            ),
-            RadioListTile<bool>(
-              title: const Text('Todos os Pacientes'),
-              value: false,
-              groupValue: _showOnlyActive,
-              onChanged: (value) {
-                Navigator.pop(context);
-                if (value != null) {
-                  setState(() {
-                    _showOnlyActive = value;
-                  });
-                  _loadPatients();
-                }
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _handleLogout() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirmar Logout'),
-        content: const Text('Deseja sair da aplicação?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Sair'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm != true) return;
-
-    try {
-      await _authService.signOut();
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao sair: $e')),
-        );
-      }
-    }
-  }
 
   @override
   void initState() {
@@ -184,35 +97,22 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
         actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert),
+          PopupMenuButton<bool>(
+            icon: const Icon(Icons.filter_list),
             onSelected: (value) {
-              if (value == 'filter') {
-                _showFilterDialog();
-              } else if (value == 'logout') {
-                _handleLogout();
-              }
+              setState(() {
+                _showOnlyActive = value;
+              });
+              _loadPatients();
             },
             itemBuilder: (context) => [
               const PopupMenuItem(
-                value: 'filter',
-                child: Row(
-                  children: [
-                    Icon(Icons.filter_list, size: 20),
-                    SizedBox(width: 8),
-                    Text('Filtrar Pacientes'),
-                  ],
-                ),
+                value: true,
+                child: Text('Pacientes Ativos'),
               ),
               const PopupMenuItem(
-                value: 'logout',
-                child: Row(
-                  children: [
-                    Icon(Icons.logout, size: 20, color: Colors.red),
-                    SizedBox(width: 8),
-                    Text('Sair', style: TextStyle(color: Colors.red)),
-                  ],
-                ),
+                value: false,
+                child: Text('Todos os Pacientes'),
               ),
             ],
           ),
