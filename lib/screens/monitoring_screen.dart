@@ -26,6 +26,16 @@ class _MonitoringScreenState extends State<MonitoringScreen> {
 
   DateTime _selectedDate = DateTime.now();
   TimeOfDay _selectedTime = TimeOfDay.now();
+  String? _selectedPeriod;
+
+  final List<Map<String, String>> _periodOptions = [
+    {'label': 'Jejum', 'time': '07:00'},
+    {'label': 'Pré-almoço', 'time': '11:30'},
+    {'label': 'Pós-almoço', 'time': '14:00'},
+    {'label': 'Pré-janta', 'time': '18:00'},
+    {'label': 'Pós-janta', 'time': '20:30'},
+    {'label': 'Antes de dormir', 'time': '22:00'},
+  ];
 
   @override
   void initState() {
@@ -58,7 +68,7 @@ class _MonitoringScreenState extends State<MonitoringScreen> {
     }
   }
 
-  Future<void> _saveReading() async {
+  Future<void> _saveReading(String timeString) async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -70,7 +80,6 @@ class _MonitoringScreenState extends State<MonitoringScreen> {
     try {
       final glucoseValue = double.parse(_glucoseController.text);
       final recommendation = PrescriptionService.getAdjustmentRecommendation(glucoseValue);
-      final timeString = '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}';
 
       final reading = GlycemicReading(
         patientId: widget.patient.id!,
@@ -174,155 +183,157 @@ class _MonitoringScreenState extends State<MonitoringScreen> {
     );
   }
 
- void _showAddReadingDialog() {
-  showDialog(
-    context: context,
-    builder: (context) {
-      String mode = 'predefinido'; // predefinido | exato
-      TimeOfDay exactTime = _selectedTime is TimeOfDay ? _selectedTime : TimeOfDay.now();
-      String predefinedTime = _selectedTime;
+  void _showAddReadingDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        String mode = 'periodo';
+        String? selectedPeriod = _periodOptions.first['label'];
+        TimeOfDay exactTime = TimeOfDay.now();
 
-      return StatefulBuilder(builder: (context, setStateDialog) {
-        return AlertDialog(
-          title: const Text('Nova Leitura de Glicemia'),
-          content: Form(
-            key: _formKey,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ListTile(
-                    title: const Text('Data'),
-                    subtitle: Text(DateFormat('dd/MM/yyyy').format(_selectedDate)),
-                    trailing: const Icon(Icons.calendar_today),
-                    onTap: () async {
-                      final date = await showDatePicker(
-                        context: context,
-                        initialDate: _selectedDate,
-                        firstDate: DateTime.now().subtract(const Duration(days: 30)),
-                        lastDate: DateTime.now(),
-                      );
-                      if (date != null) {
-                        setStateDialog(() => _selectedDate = date);
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 16),
-
-                  /// Modo de seleção
-                  DropdownButtonFormField<String>(
-                    value: mode,
-                    decoration: const InputDecoration(
-                      labelText: 'Tipo de horário',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'predefinido',
-                        child: Text('Horário pré-definido'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'exato',
-                        child: Text('Horário exato'),
-                      ),
-                    ],
-                    onChanged: (value) {
-                      setStateDialog(() {
-                        mode = value!;
-                      });
-                    },
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  /// Campo dinâmico
-                  if (mode == 'predefinido')
-                    DropdownButtonFormField<String>(
-                      value: predefinedTime,
-                      decoration: const InputDecoration(
-                        labelText: 'Horário',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: this._timeOptions
-                          .map((t) => DropdownMenuItem(value: t, child: Text(t)))
-                          .toList(),
-                      onChanged: (value) {
-                        setStateDialog(() => predefinedTime = value!);
-                      },
-                    ),
-
-                  if (mode == 'exato')
+        return StatefulBuilder(builder: (context, setStateDialog) {
+          return AlertDialog(
+            title: const Text('Nova Leitura de Glicemia'),
+            content: Form(
+              key: _formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                     ListTile(
-                      title: const Text('Horário exato'),
-                      subtitle: Text(exactTime.format(context)),
-                      trailing: const Icon(Icons.access_time),
+                      title: const Text('Data'),
+                      subtitle: Text(DateFormat('dd/MM/yyyy').format(_selectedDate)),
+                      trailing: const Icon(Icons.calendar_today),
                       onTap: () async {
-                        final picked = await showTimePicker(
+                        final date = await showDatePicker(
                           context: context,
-                          initialTime: exactTime,
+                          initialDate: _selectedDate,
+                          firstDate: DateTime.now().subtract(const Duration(days: 30)),
+                          lastDate: DateTime.now(),
                         );
-                        if (picked != null) {
-                          setStateDialog(() => exactTime = picked);
+                        if (date != null) {
+                          setStateDialog(() => _selectedDate = date);
                         }
                       },
                     ),
-
-                  const SizedBox(height: 16),
-
-                  TextFormField(
-                    controller: _glucoseController,
-                    decoration: const InputDecoration(
-                      labelText: 'Glicemia (mg/dL)',
-                      border: OutlineInputBorder(),
-                      suffixText: 'mg/dL',
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: mode,
+                      decoration: const InputDecoration(
+                        labelText: 'Tipo de horário',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'periodo',
+                          child: Text('Período do dia'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'exato',
+                          child: Text('Horário exato'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        setStateDialog(() {
+                          mode = value!;
+                        });
+                      },
                     ),
-                    keyboardType: TextInputType.number,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) return 'Campo obrigatório';
-                      final glucose = double.tryParse(value);
-                      if (glucose == null || glucose <= 0 || glucose > 600) {
-                        return 'Valor inválido';
-                      }
-                      return null;
-                    },
-                  ),
-                ],
+                    const SizedBox(height: 16),
+                    if (mode == 'periodo')
+                      DropdownButtonFormField<String>(
+                        value: selectedPeriod,
+                        decoration: const InputDecoration(
+                          labelText: 'Período do dia',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: _periodOptions
+                            .map((period) => DropdownMenuItem(
+                                  value: period['label'],
+                                  child: Text('${period['label']} (${period['time']})'),
+                                ))
+                            .toList(),
+                        onChanged: (value) {
+                          setStateDialog(() => selectedPeriod = value!);
+                        },
+                      ),
+                    if (mode == 'exato')
+                      ListTile(
+                        title: const Text('Horário exato'),
+                        subtitle: Text(exactTime.format(context)),
+                        trailing: const Icon(Icons.access_time),
+                        onTap: () async {
+                          final picked = await showTimePicker(
+                            context: context,
+                            initialTime: exactTime,
+                          );
+                          if (picked != null) {
+                            setStateDialog(() => exactTime = picked);
+                          }
+                        },
+                      ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _glucoseController,
+                      decoration: const InputDecoration(
+                        labelText: 'Glicemia (mg/dL)',
+                        border: OutlineInputBorder(),
+                        suffixText: 'mg/dL',
+                      ),
+                      keyboardType: TextInputType.number,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) return 'Campo obrigatório';
+                        final glucose = double.tryParse(value);
+                        if (glucose == null || glucose <= 0 || glucose > 600) {
+                          return 'Valor inválido';
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancelar'),
-            ),
-            ElevatedButton(
-              onPressed: _isSaving
-                  ? null
-                  : () {
-                      Navigator.pop(context);
-
-                      // Salva no estado certo
-                      if (mode == 'predefinido') {
-                        _selectedTime = predefinedTime;
-                      } else {
-                        _selectedTime =
-                            "${exactTime.hour.toString().padLeft(2, '0')}:${exactTime.minute.toString().padLeft(2, '0')}";
-                      }
-
-                      _saveReading();
-                    },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancelar'),
               ),
-              child: const Text('Salvar'),
-            ),
-          ],
-        );
-      });
-    },
-  );
-}
+              ElevatedButton(
+                onPressed: _isSaving
+                    ? null
+                    : () {
+                        if (!_formKey.currentState!.validate()) {
+                          return;
+                        }
+
+                        Navigator.pop(context);
+
+                        String timeString;
+                        if (mode == 'periodo') {
+                          final period = _periodOptions.firstWhere(
+                            (p) => p['label'] == selectedPeriod,
+                          );
+                          timeString = period['time']!;
+                        } else {
+                          timeString =
+                              "${exactTime.hour.toString().padLeft(2, '0')}:${exactTime.minute.toString().padLeft(2, '0')}";
+                        }
+
+                        _saveReading(timeString);
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Salvar'),
+              ),
+            ],
+          );
+        });
+      },
+    );
+  }
 
 
   @override
