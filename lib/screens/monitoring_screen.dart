@@ -183,13 +183,36 @@ class _MonitoringScreenState extends State<MonitoringScreen> {
     );
   }
 
+  String _getPeriodFromTime(TimeOfDay time) {
+    final hour = time.hour;
+    final minute = time.minute;
+    final totalMinutes = hour * 60 + minute;
+
+    if (totalMinutes >= 6 * 60 && totalMinutes < 9 * 60) {
+      return 'Jejum';
+    } else if (totalMinutes >= 11 * 60 && totalMinutes < 13 * 60) {
+      return 'Pré-almoço';
+    } else if (totalMinutes >= 13 * 60 && totalMinutes < 16 * 60) {
+      return 'Pós-almoço';
+    } else if (totalMinutes >= 17 * 60 && totalMinutes < 19 * 60) {
+      return 'Pré-janta';
+    } else if (totalMinutes >= 19 * 60 && totalMinutes < 21 * 60) {
+      return 'Pós-janta';
+    } else if (totalMinutes >= 21 * 60 || totalMinutes < 6 * 60) {
+      return 'Antes de dormir';
+    }
+    return 'Jejum';
+  }
+
   void _showAddReadingDialog() {
+    final now = TimeOfDay.now();
+    final initialPeriod = _getPeriodFromTime(now);
+
     showDialog(
       context: context,
       builder: (context) {
-        String mode = 'periodo';
-        String? selectedPeriod = _periodOptions.first['label'];
-        TimeOfDay exactTime = TimeOfDay.now();
+        String? selectedPeriod = initialPeriod;
+        TimeOfDay selectedTime = now;
 
         return StatefulBuilder(builder: (context, setStateDialog) {
           return AlertDialog(
@@ -217,61 +240,41 @@ class _MonitoringScreenState extends State<MonitoringScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      value: mode,
-                      decoration: const InputDecoration(
-                        labelText: 'Tipo de horário',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'periodo',
-                          child: Text('Período do dia'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'exato',
-                          child: Text('Horário exato'),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        setStateDialog(() {
-                          mode = value!;
-                        });
+                    ListTile(
+                      title: const Text('Horário'),
+                      subtitle: Text(selectedTime.format(context)),
+                      trailing: const Icon(Icons.access_time),
+                      onTap: () async {
+                        final picked = await showTimePicker(
+                          context: context,
+                          initialTime: selectedTime,
+                        );
+                        if (picked != null) {
+                          setStateDialog(() {
+                            selectedTime = picked;
+                            selectedPeriod = _getPeriodFromTime(picked);
+                          });
+                        }
                       },
                     ),
                     const SizedBox(height: 16),
-                    if (mode == 'periodo')
-                      DropdownButtonFormField<String>(
-                        value: selectedPeriod,
-                        decoration: const InputDecoration(
-                          labelText: 'Período do dia',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: _periodOptions
-                            .map((period) => DropdownMenuItem(
-                                  value: period['label'],
-                                  child: Text('${period['label']} (${period['time']})'),
-                                ))
-                            .toList(),
-                        onChanged: (value) {
-                          setStateDialog(() => selectedPeriod = value!);
-                        },
+                    DropdownButtonFormField<String>(
+                      value: selectedPeriod,
+                      decoration: const InputDecoration(
+                        labelText: 'Período do dia',
+                        border: OutlineInputBorder(),
+                        helperText: 'Selecionado automaticamente, pode ser alterado',
                       ),
-                    if (mode == 'exato')
-                      ListTile(
-                        title: const Text('Horário exato'),
-                        subtitle: Text(exactTime.format(context)),
-                        trailing: const Icon(Icons.access_time),
-                        onTap: () async {
-                          final picked = await showTimePicker(
-                            context: context,
-                            initialTime: exactTime,
-                          );
-                          if (picked != null) {
-                            setStateDialog(() => exactTime = picked);
-                          }
-                        },
-                      ),
+                      items: _periodOptions
+                          .map((period) => DropdownMenuItem(
+                                value: period['label'],
+                                child: Text(period['label']!),
+                              ))
+                          .toList(),
+                      onChanged: (value) {
+                        setStateDialog(() => selectedPeriod = value);
+                      },
+                    ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _glucoseController,
@@ -309,16 +312,8 @@ class _MonitoringScreenState extends State<MonitoringScreen> {
 
                         Navigator.pop(context);
 
-                        String timeString;
-                        if (mode == 'periodo') {
-                          final period = _periodOptions.firstWhere(
-                            (p) => p['label'] == selectedPeriod,
-                          );
-                          timeString = period['time']!;
-                        } else {
-                          timeString =
-                              "${exactTime.hour.toString().padLeft(2, '0')}:${exactTime.minute.toString().padLeft(2, '0')}";
-                        }
+                        final timeString =
+                            "${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')} - ${selectedPeriod ?? ''}";
 
                         _saveReading(timeString);
                       },
