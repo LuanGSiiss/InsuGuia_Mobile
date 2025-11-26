@@ -55,14 +55,26 @@ Meta glicêmica:
   }
 
   static String _getBasalInsulinInstructions(double dose) {
-    return '''Insulina Basal (NPH ou Glargina):
-- Dose: ${dose.toStringAsFixed(0)} UI/dia
-- Aplicação: 22h (antes de dormir)
-- Via: Subcutânea (região abdominal ou coxa)
+    final morningDose = (dose * 2 / 3).round();
+    final nightDose = (dose * 1 / 3).round();
+
+    return '''Insulina NPH:
+- Dose Total do Dia: ${dose.toStringAsFixed(0)} UI/dia
+
+Divisão das Doses:
+- Dose Matinal (NPH): ${morningDose} UI (2/3 da dose total)
+  Aplicação: 07h-08h (antes do café da manhã)
+
+- Dose Noturna (NPH): ${nightDose} UI (1/3 da dose total)
+  Aplicação: 22h (antes de dormir)
+
+Via: Subcutânea (região abdominal ou coxa)
 
 Ajustes:
-- Se glicemia de jejum > 180 mg/dL: aumentar 2 UI
-- Se glicemia de jejum < 70 mg/dL: reduzir 2 UI''';
+- Se glicemia de jejum > 180 mg/dL: aumentar dose noturna em 2 UI
+- Se glicemia de jejum < 70 mg/dL: reduzir dose noturna em 2 UI
+- Se glicemia pré-jantar > 180 mg/dL: aumentar dose matinal em 2 UI
+- Se glicemia pré-jantar < 70 mg/dL: reduzir dose matinal em 2 UI''';
   }
 
   static String _getRapidInsulinInstructions(double dose) {
@@ -101,17 +113,57 @@ Se glicemia < 50 mg/dL ou paciente inconsciente:
 
   static String getAdjustmentRecommendation(double glucoseValue) {
     if (glucoseValue < 70) {
-      return 'HIPOGLICEMIA - Seguir protocolo de hipoglicemia. Considerar redução de insulina.';
+      return '''HIPOGLICEMIA DETECTADA
+
+Ação Imediata:
+• Consumir 15g de carboidrato de ação rápida
+• Aguardar 15 minutos e medir novamente
+• Se persistir < 70 mg/dL, repetir o consumo
+
+Seguimento:
+• Considerar redução da dose de insulina
+• Avaliar adesão ao plano alimentar
+• Monitorar mais frequentemente''';
     } else if (glucoseValue >= 70 && glucoseValue < 100) {
-      return 'Glicemia adequada, porém próxima ao limite inferior. Monitorar atentamente.';
-    } else if (glucoseValue >= 100 && glucoseValue <= 140) {
-      return 'Glicemia dentro da meta. Manter esquema atual.';
-    } else if (glucoseValue > 140 && glucoseValue <= 180) {
-      return 'Glicemia levemente elevada. Verificar adesão à dieta e aplicação de insulina.';
+      return '''Glicemia adequada, próxima ao limite inferior.
+
+Recomendações:
+• Manter o monitoramento regular
+• Seguir o plano alimentar prescrito
+• Atenção para sintomas de hipoglicemia
+• Não reduzir alimentação''';
+    } else if (glucoseValue >= 100 && glucoseValue <= 180) {
+      return '''Glicemia dentro da meta ideal!
+
+Recomendações:
+• Manter o esquema de insulina atual
+• Continuar seguindo o plano alimentar
+• Manter monitoramento regular
+• Parabéns pelo controle glicêmico!''';
     } else if (glucoseValue > 180 && glucoseValue <= 250) {
-      return 'Hiperglicemia moderada. Aplicar escala de correção e considerar aumento da dose basal em 10%.';
+      return '''Hiperglicemia moderada detectada.
+
+Recomendações:
+• Verificar adesão à dieta prescrita
+• Confirmar aplicação correta da insulina
+• Aplicar escala de correção se disponível
+• Se persistir, considerar aumento de 10% na dose basal
+• Medir novamente em 2-4 horas''';
     } else {
-      return 'HIPERGLICEMIA IMPORTANTE - Aplicar escala de correção. Reavaliar esquema de insulina. Investigar causas (infecção, estresse, má adesão).';
+      return '''HIPERGLICEMIA IMPORTANTE - Atenção!
+
+Ação Imediata:
+• Verificar cetonas (se aplicável)
+• Aplicar escala de correção
+• Entrar em contato com o médico se persistir
+
+Investigar:
+• Possível infecção ou doença intercorrente
+• Estresse físico ou emocional
+• Má adesão à dieta ou medicação
+• Erro na aplicação de insulina
+
+Monitoramento: Medir glicemia a cada 2 horas''';
     }
   }
 

@@ -25,16 +25,7 @@ class _MonitoringScreenState extends State<MonitoringScreen> {
   bool _isSaving = false;
 
   DateTime _selectedDate = DateTime.now();
-  String _selectedTime = 'Jejum';
-
-  final List<String> _timeOptions = [
-    'Jejum',
-    'Pré-almoço',
-    'Pós-almoço',
-    'Pré-jantar',
-    'Pós-jantar',
-    'Antes de dormir',
-  ];
+  TimeOfDay _selectedTime = TimeOfDay.now();
 
   @override
   void initState() {
@@ -79,11 +70,12 @@ class _MonitoringScreenState extends State<MonitoringScreen> {
     try {
       final glucoseValue = double.parse(_glucoseController.text);
       final recommendation = PrescriptionService.getAdjustmentRecommendation(glucoseValue);
+      final timeString = '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}';
 
       final reading = GlycemicReading(
         patientId: widget.patient.id!,
         readingDate: _selectedDate,
-        readingTime: _selectedTime,
+        readingTime: timeString,
         glucoseValue: glucoseValue,
         adjustmentRecommendation: recommendation,
       );
@@ -94,9 +86,7 @@ class _MonitoringScreenState extends State<MonitoringScreen> {
       await _loadReadings();
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Leitura registrada com sucesso!')),
-        );
+        _showRecommendationDialog(glucoseValue, recommendation);
       }
     } catch (e) {
       if (mounted) {
@@ -111,6 +101,77 @@ class _MonitoringScreenState extends State<MonitoringScreen> {
         });
       }
     }
+  }
+
+  void _showRecommendationDialog(double glucoseValue, String recommendation) {
+    Color dialogColor;
+    IconData dialogIcon;
+    String dialogTitle;
+
+    if (glucoseValue < 70) {
+      dialogColor = Colors.red;
+      dialogIcon = Icons.warning_amber;
+      dialogTitle = 'HIPOGLICEMIA';
+    } else if (glucoseValue >= 70 && glucoseValue <= 180) {
+      dialogColor = Colors.green;
+      dialogIcon = Icons.check_circle;
+      dialogTitle = 'Glicemia Adequada';
+    } else {
+      dialogColor = Colors.orange;
+      dialogIcon = Icons.info;
+      dialogTitle = 'HIPERGLICEMIA';
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: dialogColor.withOpacity(0.1),
+        title: Row(
+          children: [
+            Icon(dialogIcon, color: dialogColor, size: 32),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                dialogTitle,
+                style: TextStyle(color: dialogColor, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Glicemia: ${glucoseValue.toStringAsFixed(0)} mg/dL',
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Recomendação:',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              recommendation,
+              style: const TextStyle(fontSize: 14),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Entendi'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showAddReadingDialog() {
@@ -143,22 +204,20 @@ class _MonitoringScreenState extends State<MonitoringScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  value: _selectedTime,
-                  decoration: const InputDecoration(
-                    labelText: 'Horário',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: _timeOptions
-                      .map((time) => DropdownMenuItem(
-                            value: time,
-                            child: Text(time),
-                          ))
-                      .toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedTime = value!;
-                    });
+                ListTile(
+                  title: const Text('Horário'),
+                  subtitle: Text(_selectedTime.format(context)),
+                  trailing: const Icon(Icons.access_time),
+                  onTap: () async {
+                    final time = await showTimePicker(
+                      context: context,
+                      initialTime: _selectedTime,
+                    );
+                    if (time != null) {
+                      setState(() {
+                        _selectedTime = time;
+                      });
+                    }
                   },
                 ),
                 const SizedBox(height: 16),
